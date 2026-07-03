@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   ArrowLeft,
@@ -8,26 +8,54 @@ import {
   MoreVertical,
   Paperclip,
   Send,
-  Users,
-  X
+  PanelRight,
+  X,
 } from "lucide-react"
 import { mockChats } from "../data/mockChatData"
+import { currentUser } from "../data/tournamentPlayers"
+import {
+  mockTournamentChatTree,
+  getVisibleNavigatorTree,
+  findChatPath,
+  getAutoExpandNodeIds,
+} from "../data/chatNavigatorMock"
+import ConnectedPlayersBar from "../components/ConnectedPlayersBar"
+import ChatNavigatorSidebar from "../components/ChatNavigatorSidebar"
+import ChatBreadcrumb from "../components/ChatBreadcrumb"
 import type { ChatChannel, Message } from "../types/chat"
+
+const visibleTree = getVisibleNavigatorTree(mockTournamentChatTree)
+
+function loadExpandedNodes(): Set<string> {
+  try {
+    const stored = localStorage.getItem("chat-nav-expanded")
+    if (stored) {
+      return new Set(JSON.parse(stored) as string[])
+    }
+  } catch {
+    // ignore
+  }
+  return new Set([mockTournamentChatTree.tournamentId])
+}
 
 export default function ChatPage() {
   const navigate = useNavigate()
   const [channels, setChannels] = useState<ChatChannel[]>(mockChats)
   const [activeChannelId, setActiveChannelId] = useState<string>("tournament")
   const [inputText, setInputText] = useState<string>("")
-  const [isPeoplePanelOpen, setIsPeoplePanelOpen] = useState<boolean>(false)
+  const [isNavigatorOpen, setIsNavigatorOpen] = useState<boolean>(false)
   const [activeMenu, setActiveMenu] = useState<boolean>(false)
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(loadExpandedNodes)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Get active channel details
   const activeChannel = channels.find((c) => c.id === activeChannelId) || channels[0]
 
-  // Auto scroll to bottom
+  const breadcrumbSegments = useMemo(
+    () => findChatPath(mockTournamentChatTree, activeChannelId),
+    [activeChannelId]
+  )
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
@@ -36,15 +64,43 @@ export default function ChatPage() {
     scrollToBottom()
   }, [activeChannelId, activeChannel.messages])
 
-  // Handle send message
+  useEffect(() => {
+    const autoIds = getAutoExpandNodeIds(mockTournamentChatTree, activeChannelId)
+    setExpandedNodes((prev) => {
+      const next = new Set(prev)
+      autoIds.forEach((id) => next.add(id))
+      return next
+    })
+  }, [activeChannelId])
+
+  useEffect(() => {
+    localStorage.setItem("chat-nav-expanded", JSON.stringify([...expandedNodes]))
+  }, [expandedNodes])
+
+  const handleToggleNode = useCallback((nodeId: string) => {
+    setExpandedNodes((prev) => {
+      const next = new Set(prev)
+      if (next.has(nodeId)) {
+        next.delete(nodeId)
+      } else {
+        next.add(nodeId)
+      }
+      return next
+    })
+  }, [])
+
+  const handleSelectChat = useCallback((chatId: string) => {
+    setActiveChannelId(chatId)
+  }, [])
+
   const handleSendMessage = () => {
     if (!inputText.trim()) return
 
     const newMessage: Message = {
       id: `user_${Date.now()}`,
       senderId: "me",
-      senderName: "Raunak",
-      senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=gaming",
+      senderName: currentUser.name,
+      senderAvatarUrl: currentUser.avatarUrl,
       content: inputText,
       type: "text",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -56,7 +112,7 @@ export default function ChatPage() {
           return {
             ...c,
             messages: [...c.messages, newMessage],
-          };
+          }
         }
         return c
       })
@@ -64,12 +120,10 @@ export default function ChatPage() {
     setInputText("")
   }
 
-  // Handle quick reply pills
   const handleQuickReply = (pill: string) => {
     setInputText((prev) => (prev ? prev + " " + pill : pill))
   }
 
-  // Get matching icon for active channel
   const renderChannelIcon = (iconType: string, className: string = "h-5 w-5") => {
     switch (iconType) {
       case "megaphone":
@@ -83,46 +137,45 @@ export default function ChatPage() {
     }
   }
 
+  const playersBarLabel = activeChannel.isLobby
+    ? "Tournament Players (16 Teams)"
+    : `${activeChannel.stageName ?? "Match"} · ${activeChannel.name}`
+
   return (
-    <div className="flex h-screen flex-col bg-[#080a12] text-white overflow-hidden">
-      {/* Top Chat Header */}
-      <header className="flex h-16 items-center justify-between border-b border-[#1f2538] bg-[#0c0f1d] px-4 md:px-6 z-10">
-        <div className="flex items-center gap-3">
-          {/* Back button */}
+    <div className="flex h-screen bg-[#080a12] text-white overflow-hidden">
+      {/* Left: Chat column (header + messages + input) */}
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+        <header className="flex min-h-16 items-center justify-between border-b border-[#1f2538] bg-[#0c0f1d] px-4 py-2 md:px-6 z-10 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => navigate("/")}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1f2942] bg-[#0c0f1d] hover:bg-[#141829] text-gray-400 hover:text-white transition-all cursor-pointer"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#1f2942] bg-[#0c0f1d] hover:bg-[#141829] text-gray-400 hover:text-white transition-all cursor-pointer"
           >
             <ArrowLeft className="h-4.5 w-4.5" />
           </button>
 
-          {/* Icon indicator */}
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#141829] border border-[#1f2942]">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#141829] border border-[#1f2942]">
             {renderChannelIcon(activeChannel.iconType)}
           </div>
 
-          {/* Tournament title and info */}
-          <div className="text-left">
-            <h1 className="text-sm font-bold text-white flex items-center gap-1.5 leading-tight">
-              girlie <span className="text-[10px] text-gray-500 font-normal">| {activeChannel.name}</span>
+          <div className="text-left min-w-0">
+            <h1 className="text-sm font-bold text-white leading-tight truncate">
+              {mockTournamentChatTree.tournamentName}
             </h1>
-            <p className="text-xs text-gray-400 max-w-[200px] sm:max-w-xs md:max-w-md truncate">
-              {activeChannel.subtitle}
-            </p>
+            <p className="text-xs text-gray-400 truncate">{activeChannel.subtitle}</p>
+            <ChatBreadcrumb segments={breadcrumbSegments} />
           </div>
         </div>
 
-        {/* Header Right Actions */}
-        <div className="flex items-center gap-2">
-          {/* People Panel Toggle (Mobile/Tablet) */}
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => setIsPeoplePanelOpen(!isPeoplePanelOpen)}
+            onClick={() => setIsNavigatorOpen(!isNavigatorOpen)}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1f2942] bg-[#0c0f1d] hover:bg-[#141829] text-gray-400 hover:text-white lg:hidden transition-all cursor-pointer"
+            aria-label="Open chat navigator"
           >
-            <Users className="h-4.5 w-4.5" />
+            <PanelRight className="h-4.5 w-4.5" />
           </button>
 
-          {/* Three-dot menu */}
           <div className="relative">
             <button
               onClick={() => setActiveMenu(!activeMenu)}
@@ -135,8 +188,8 @@ export default function ChatPage() {
               <div className="absolute right-0 mt-2 w-48 rounded-lg border border-[#1f2942] bg-[#0c0f1d] py-1 shadow-2xl z-50">
                 <button
                   onClick={() => {
-                    setActiveMenu(false);
-                    alert("Chat notification settings updated!");
+                    setActiveMenu(false)
+                    alert("Chat notification settings updated!")
                   }}
                   className="w-full px-4 py-2 text-left text-xs hover:bg-[#141829] transition-colors"
                 >
@@ -144,8 +197,8 @@ export default function ChatPage() {
                 </button>
                 <button
                   onClick={() => {
-                    setActiveMenu(false);
-                    alert("Chat logs cleared locally.");
+                    setActiveMenu(false)
+                    alert("Chat logs cleared locally.")
                   }}
                   className="w-full px-4 py-2 text-left text-xs hover:bg-[#141829] transition-colors text-red-400"
                 >
@@ -155,36 +208,14 @@ export default function ChatPage() {
             )}
           </div>
         </div>
-      </header>
+        </header>
 
-      {/* Main Panel */}
-      <div className="flex flex-1 overflow-hidden relative">
-        {/* Chat Area (Left/Center) */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Switcher Tabs Bar */}
-          <div className="border-b border-[#1f2538] bg-[#090b14]/50 px-4 py-2.5">
-            <div className="flex space-x-1.5 overflow-x-auto scrollbar-none rounded-lg bg-[#0c0f1d] p-1 border border-[#1f2942]/60 w-fit">
-              {channels.map((chan) => {
-                const isActive = chan.id === activeChannelId
-                return (
-                  <button
-                    key={chan.id}
-                    onClick={() => setActiveChannelId(chan.id)}
-                    className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-4 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                      isActive
-                        ? "bg-[#1f2942] text-white shadow-sm"
-                        : "text-gray-400 hover:text-white hover:bg-[#141829]/50"
-                    }`}
-                  >
-                    {renderChannelIcon(chan.iconType, "h-3.5 w-3.5")}
-                    <span>{chan.name}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+        <div className="flex flex-1 flex-col overflow-hidden relative min-h-0">
+          <ConnectedPlayersBar
+            participants={activeChannel.participants}
+            label={playersBarLabel}
+          />
 
-          {/* Messages Panel */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-radial from-[#0c0f1d] to-[#080a12]">
             {activeChannel.messages.map((msg) => {
               const isOwn = msg.senderId === "me"
@@ -204,7 +235,6 @@ export default function ChatPage() {
                   key={msg.id}
                   className={`flex items-end gap-2.5 text-left ${isOwn ? "justify-end" : "justify-start"}`}
                 >
-                  {/* Left Avatar for other users */}
                   {!isOwn && (
                     <div className="h-8.5 w-8.5 overflow-hidden rounded-full ring-2 ring-indigo-500/30 shrink-0">
                       <img
@@ -215,16 +245,13 @@ export default function ChatPage() {
                     </div>
                   )}
 
-                  {/* Message bubble wrapper */}
                   <div className={`max-w-[70%] flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
-                    {/* Sender name for others */}
                     {!isOwn && (
                       <span className="text-[10px] font-bold text-gray-400 mb-1 ml-1">
                         {msg.senderName}
                       </span>
                     )}
 
-                    {/* Chat Bubble content */}
                     <div
                       className={`rounded-2xl px-4 py-2.5 text-sm shadow-md transition-all ${
                         isOwn
@@ -248,13 +275,11 @@ export default function ChatPage() {
                       )}
                     </div>
 
-                    {/* Timestamp */}
                     <span className="text-[9px] text-gray-500 mt-1 ml-1 mr-1">
                       {msg.timestamp}
                     </span>
                   </div>
 
-                  {/* Right Avatar for current user */}
                   {isOwn && (
                     <div className="h-8.5 w-8.5 overflow-hidden rounded-full ring-2 ring-purple-500/30 shrink-0">
                       <img
@@ -270,9 +295,7 @@ export default function ChatPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input & Quick Reply Controls */}
           <div className="border-t border-[#1f2538] bg-[#0c0f1d] p-3 md:p-4">
-            {/* Quick replies pills */}
             <div className="flex space-x-1.5 overflow-x-auto scrollbar-none pb-2.5 mb-1.5">
               {["GG", "WP", "RE?", "NICE", "🔥", "RUSH"].map((pill) => (
                 <button
@@ -285,21 +308,18 @@ export default function ChatPage() {
               ))}
             </div>
 
-            {/* Input fields */}
             <div className="flex items-end gap-2.5 bg-[#090b14] border border-[#1f2942] rounded-xl p-2 focus-within:border-indigo-500 transition-all">
-              {/* Attach */}
               <button className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-[#12162b] transition-all cursor-pointer">
                 <Paperclip className="h-4.5 w-4.5" />
               </button>
 
-              {/* Text Area */}
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
+                    e.preventDefault()
+                    handleSendMessage()
                   }
                 }}
                 placeholder="Type a message..."
@@ -307,7 +327,6 @@ export default function ChatPage() {
                 className="flex-1 max-h-20 bg-transparent py-1 px-1 text-sm text-white placeholder-gray-500 outline-none resize-none align-bottom scrollbar-none"
               />
 
-              {/* Send */}
               <button
                 onClick={handleSendMessage}
                 disabled={!inputText.trim()}
@@ -321,102 +340,46 @@ export default function ChatPage() {
               </button>
             </div>
           </div>
-        </div>
 
-        {/* People Panel Sidebar (Desktop) */}
-        <div className="hidden lg:flex w-72 flex-col border-l border-[#1f2538] bg-[#0c0f1d] text-left">
-          <div className="p-4 border-b border-[#1f2538] flex items-center justify-between">
-            <span className="text-sm font-bold text-white tracking-wide">Participants</span>
-            <span className="rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-xs font-bold text-indigo-400">
-              {activeChannel.participants.length}
-            </span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {activeChannel.participants.map((member) => (
-              <div
-                key={member.id}
-                className="flex items-center gap-3 rounded-lg p-2 hover:bg-[#12162b]/50 transition-colors"
-              >
-                <div className="relative h-9 w-9 overflow-hidden rounded-full ring-2 ring-gray-700/30">
-                  <img src={member.avatarUrl} alt={member.name} className="h-full w-full object-cover" />
-                  <span
-                    className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-[#0c0f1d] ${
-                      member.isOnline ? "bg-emerald-500" : "bg-gray-500"
-                    }`}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold text-white truncate">{member.name}</span>
-                    {member.isCurrentUser && (
-                      <span className="rounded bg-indigo-600/20 px-1.5 py-0.5 text-[9px] font-bold text-indigo-400 uppercase tracking-wide">
-                        Me
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-gray-500">
-                    {member.isOnline ? "Online" : "Offline"}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Drawer slide-out for Mobile/Tablet */}
-        {isPeoplePanelOpen && (
-          <div className="lg:hidden absolute inset-0 z-40 bg-black/60 backdrop-blur-sm transition-all flex justify-end">
-            <div className="w-72 bg-[#0c0f1d] h-full flex flex-col border-l border-[#1f2538] text-left animate-slide-in">
-              <div className="p-4 border-b border-[#1f2538] flex items-center justify-between">
-                <span className="text-sm font-bold text-white tracking-wide">Participants</span>
-                <div className="flex items-center gap-3">
-                  <span className="rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-xs font-bold text-indigo-400">
-                    {activeChannel.participants.length}
-                  </span>
+          {/* Navigator drawer (Mobile/Tablet) */}
+          {isNavigatorOpen && (
+            <div className="lg:hidden absolute inset-0 z-40 bg-black/60 backdrop-blur-sm transition-all flex justify-end">
+              <div className="w-80 h-full flex flex-col border-l border-[#1f2538] animate-slide-in bg-[#0c0f1d]">
+                <div className="flex items-center justify-between border-b border-[#1f2538] bg-[#0c0f1d] px-4 py-3">
+                  <span className="text-base font-bold text-white">Chat Navigator</span>
                   <button
-                    onClick={() => setIsPeoplePanelOpen(false)}
+                    onClick={() => setIsNavigatorOpen(false)}
                     className="p-1 hover:bg-[#12162b] rounded-lg text-gray-400 hover:text-white transition-all cursor-pointer"
+                    aria-label="Close chat navigator"
                   >
-                    <X className="h-4.5 w-4.5" />
+                    <X className="h-5 w-5" />
                   </button>
                 </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                {activeChannel.participants.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center gap-3 rounded-lg p-2 hover:bg-[#12162b]/50 transition-colors"
-                  >
-                    <div className="relative h-9 w-9 overflow-hidden rounded-full ring-2 ring-gray-700/30">
-                      <img src={member.avatarUrl} alt={member.name} className="h-full w-full object-cover" />
-                      <span
-                        className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-[#0c0f1d] ${
-                          member.isOnline ? "bg-emerald-500" : "bg-gray-500"
-                        }`}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-white truncate">{member.name}</span>
-                        {member.isCurrentUser && (
-                          <span className="rounded bg-indigo-600/20 px-1.5 py-0.5 text-[9px] font-bold text-indigo-400 uppercase tracking-wide">
-                            Me
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-gray-500">
-                        {member.isOnline ? "Online" : "Offline"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                <ChatNavigatorSidebar
+                  tree={visibleTree}
+                  activeChatId={activeChannelId}
+                  expandedNodes={expandedNodes}
+                  onToggleNode={handleToggleNode}
+                  onSelectChat={handleSelectChat}
+                  onClose={() => setIsNavigatorOpen(false)}
+                  hideHeader
+                  className="flex-1 overflow-hidden"
+                />
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      {/* Right: Chat Navigator — full height from top */}
+      <ChatNavigatorSidebar
+        tree={visibleTree}
+        activeChatId={activeChannelId}
+        expandedNodes={expandedNodes}
+        onToggleNode={handleToggleNode}
+        onSelectChat={handleSelectChat}
+        className="hidden lg:flex w-80 shrink-0 border-l border-[#1f2538] h-full"
+      />
     </div>
   )
 }

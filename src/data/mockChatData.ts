@@ -1,55 +1,35 @@
-import type { ChatChannel, Participant } from "../types/chat"
-
-// Common Current User
-export const currentUser: Participant = {
-  id: "me",
-  name: "Raunak",
-  avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=gaming",
-  isOnline: true,
-  isCurrentUser: true,
-}
-
-// Participants lists for different chats
-const tournamentParticipants: Participant[] = [
+import type { ChatChannel } from "../types/chat"
+import {
   currentUser,
-  { id: "admin", name: "NOVA_Admin", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=admin", isOnline: true, isCurrentUser: false },
-  { id: "alex", name: "Alex_FPS", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=alex", isOnline: true, isCurrentUser: false },
-  { id: "sarah", name: "Sarah_Sniper", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=sarah", isOnline: true, isCurrentUser: false },
-  { id: "clown", name: "ToxicClown", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=clown", isOnline: false, isCurrentUser: false },
-  { id: "ghost", name: "GhostRider", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=ghost", isOnline: true, isCurrentUser: false },
-]
+  getMatchPlayers,
+  tournamentChatParticipants,
+  tournamentAdmin,
+} from "./tournamentPlayers"
 
-const match1Participants: Participant[] = [
-  currentUser,
-  { id: "alex", name: "Alex_FPS", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=alex", isOnline: true, isCurrentUser: false },
-  { id: "ghost", name: "GhostRider", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=ghost", isOnline: true, isCurrentUser: false },
-  { id: "shadow", name: "ShadowKiller", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=shadow", isOnline: false, isCurrentUser: false },
-]
+const match1Participants = getMatchPlayers(0)
+const match3Participants = getMatchPlayers(2)
+const match4Participants = getMatchPlayers(3)
 
-const match2Participants: Participant[] = [
+const quarterFinalParticipants = [
   currentUser,
-  { id: "sarah", name: "Sarah_Sniper", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=sarah", isOnline: true, isCurrentUser: false },
-  { id: "vortex", name: "Vortex_Gaming", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=vortex", isOnline: true, isCurrentUser: false },
-  { id: "clown", name: "ToxicClown", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=clown", isOnline: false, isCurrentUser: false },
-]
-
-const quarterFinalParticipants: Participant[] = [
-  currentUser,
-  { id: "admin", name: "NOVA_Admin", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=admin", isOnline: true, isCurrentUser: false },
-  { id: "ninja", name: "NinjaX", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=ninja", isOnline: true, isCurrentUser: false },
-  { id: "valkyrie", name: "Valkyrie_OP", avatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=valkyrie", isOnline: true, isCurrentUser: false },
+  tournamentAdmin,
+  ...getMatchPlayers(0).filter((p) => !p.isCurrentUser),
+  ...getMatchPlayers(1).filter((p) => !p.isCurrentUser).slice(0, 2),
 ]
 
 export const mockChats: ChatChannel[] = [
   {
     id: "tournament",
-    name: "Tournament Chat",
+    name: "Tournament Lobby",
     subtitle: "Global chat with registered players & admins",
     iconType: "megaphone",
-    participants: tournamentParticipants,
+    isLobby: true,
+    isUserParticipant: true,
+    chatEnabled: true,
+    participants: tournamentChatParticipants,
     messages: [
       { id: "t1", content: "Tournament Chat Lobby initialized by admin.", type: "system", timestamp: "20:00" },
-      { id: "t2", senderId: "admin", senderName: "NOVA_Admin", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=admin", content: "Welcome everyone to the girlie tournament chat!", type: "text", timestamp: "20:01" },
+      { id: "t2", senderId: "admin", senderName: "NOVA_Admin", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=admin", content: "Welcome everyone to the DemonlLord tournament chat!", type: "text", timestamp: "20:01" },
       { id: "t3", senderId: "alex", senderName: "Alex_FPS", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=alex", content: "Let's go! Can't wait for the match.", type: "text", timestamp: "20:02" },
       { id: "t4", senderId: "sarah", senderName: "Sarah_Sniper", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=sarah", content: "Is CoD Mobile ruleset standard search & destroy?", type: "text", timestamp: "20:03" },
       { id: "t5", senderId: "admin", senderName: "NOVA_Admin", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=admin", content: "Yes, standard S&D. Map pools are listed in the Rules tab.", type: "text", timestamp: "20:04" },
@@ -83,8 +63,15 @@ export const mockChats: ChatChannel[] = [
   {
     id: "match-1",
     name: "Match 1",
-    subtitle: "FFA Match 1 - Competitors Chat",
+    subtitle: "Qualifier · Match Day 1",
     iconType: "swords",
+    stageIndex: 0,
+    stageName: "Qualifier",
+    matchDayId: "qualifier-day-1",
+    matchDayLabel: "Match Day 1",
+    matchId: "match-1",
+    isUserParticipant: true,
+    chatEnabled: true,
     participants: match1Participants,
     messages: [
       { id: "m1_1", content: "System: Match 1 room created.", type: "system", timestamp: "20:30" },
@@ -120,49 +107,73 @@ export const mockChats: ChatChannel[] = [
     ],
   },
   {
-    id: "match-2",
-    name: "Match 2",
-    subtitle: "FFA Match 2 - Competitors Chat",
+    id: "match-3",
+    name: "Match 3",
+    subtitle: "Qualifier · Match Day 1",
     iconType: "swords",
-    participants: match2Participants,
+    stageIndex: 0,
+    stageName: "Qualifier",
+    matchDayId: "qualifier-day-1",
+    matchDayLabel: "Match Day 1",
+    matchId: "match-3",
+    isUserParticipant: true,
+    chatEnabled: true,
+    participants: match3Participants,
     messages: [
-      { id: "m2_1", content: "System: Match 2 room created.", type: "system", timestamp: "20:30" },
-      { id: "m2_2", senderId: "sarah", senderName: "Sarah_Sniper", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=sarah", content: "Hi Match 2 lobby!", type: "text", timestamp: "20:31" },
-      { id: "m2_3", senderId: "vortex", senderName: "Vortex_Gaming", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=vortex", content: "Hey! Ready to drop some scores.", type: "text", timestamp: "20:32" },
-      { id: "m2_4", senderId: "clown", senderName: "ToxicClown", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=clown", content: "Easy win incoming.", type: "text", timestamp: "20:33" },
-      { id: "m2_5", senderId: "me", senderName: "Raunak", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=gaming", content: "Don't count your chickens yet Clown haha.", type: "text", timestamp: "20:34" },
-      { id: "m2_6", senderId: "sarah", senderName: "Sarah_Sniper", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=sarah", content: "Let's keep it friendly guys.", type: "text", timestamp: "20:35" },
-      { id: "m2_7", senderId: "vortex", senderName: "Vortex_Gaming", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=vortex", content: "No toxic vibes here, just fun.", type: "text", timestamp: "20:36" },
-      { id: "m2_8", senderId: "clown", senderName: "ToxicClown", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=clown", content: "Just trash talking, all good.", type: "text", timestamp: "20:37" },
-      { id: "m2_9", senderId: "sarah", senderName: "Sarah_Sniper", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=sarah", content: "What map did admin choose for Match 2?", type: "text", timestamp: "20:38" },
-      { id: "m2_10", senderId: "vortex", senderName: "Vortex_Gaming", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=vortex", content: "Shipment, absolute chaos.", type: "text", timestamp: "20:39" },
-      { id: "m2_11", senderId: "sarah", senderName: "Sarah_Sniper", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=sarah", content: "Oh god, shotgun meta...", type: "text", timestamp: "20:40" },
-      { id: "m2_12", senderId: "clown", senderName: "ToxicClown", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=clown", content: "Shipment is fire. Here is my weapon choice:", type: "image", imageUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=600&auto=format&fit=crop", timestamp: "20:41" },
-      { id: "m2_13", senderId: "me", senderName: "Raunak", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=gaming", content: "Shotgun on Shipment is illegal!", type: "text", timestamp: "20:42" },
-      { id: "m2_14", senderId: "vortex", senderName: "Vortex_Gaming", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=vortex", content: "I am running submachine gun. Fast fire rate.", type: "text", timestamp: "20:43" },
-      { id: "m2_15", content: "System: Match 2 is starting now on Shipment.", type: "system", timestamp: "20:45" },
-      { id: "m2_16", senderId: "clown", senderName: "ToxicClown", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=clown", content: "Spawn trapping is real.", type: "text", timestamp: "20:47" },
-      { id: "m2_17", senderId: "vortex", senderName: "Vortex_Gaming", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=vortex", content: "Yeah got spawned in front of your barrels twice.", type: "text", timestamp: "20:48" },
-      { id: "m2_18", senderId: "sarah", senderName: "Sarah_Sniper", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=sarah", content: "Got a triple kill! Nice.", type: "text", timestamp: "20:49" },
-      { id: "m2_19", senderId: "me", senderName: "Raunak", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=gaming", content: "Nice Sarah! Clown is dominating though.", type: "text", timestamp: "20:50" },
-      { id: "m2_20", senderId: "clown", senderName: "ToxicClown", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=clown", content: "30 kills already. Almost done.", type: "text", timestamp: "20:52" },
-      { id: "m2_21", senderId: "vortex", senderName: "Vortex_Gaming", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=vortex", content: "Crazy match. Hard to breathe.", type: "text", timestamp: "20:53" },
-      { id: "m2_22", senderId: "me", senderName: "Raunak", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=gaming", content: "WHEW that was intense.", type: "text", timestamp: "20:54" },
-      { id: "m2_23", content: "System: Match 2 completed. ToxicClown wins.", type: "system", timestamp: "20:55" },
-      { id: "m2_24", senderId: "vortex", senderName: "Vortex_Gaming", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=vortex", content: "GG Clown.", type: "text", timestamp: "20:56" },
-      { id: "m2_25", senderId: "sarah", senderName: "Sarah_Sniper", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=sarah", content: "WP. Fun lobby.", type: "text", timestamp: "20:57" },
-      { id: "m2_26", senderId: "me", senderName: "Raunak", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=gaming", content: "GG. Clown shotguns are too OP.", type: "text", timestamp: "20:58" },
-      { id: "m2_27", senderId: "clown", senderName: "ToxicClown", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=clown", content: "GG WP. You all played great.", type: "text", timestamp: "20:59" },
-      { id: "m2_28", senderId: "vortex", senderName: "Vortex_Gaming", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=vortex", content: "See you guys in next lobby.", type: "text", timestamp: "21:00" },
-      { id: "m2_29", senderId: "sarah", senderName: "Sarah_Sniper", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=sarah", content: "Good luck in next rounds!", type: "text", timestamp: "21:01" },
-      { id: "m2_30", senderId: "me", senderName: "Raunak", senderAvatarUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=gaming", content: "WP guys, off to watch the stream.", type: "text", timestamp: "21:02" },
+      { id: "m3_1", content: "System: Match 3 room created.", type: "system", timestamp: "20:30" },
+      ...match3Participants
+        .filter((p) => !p.isCurrentUser)
+        .map((p, i) => ({
+          id: `m3_${i + 2}`,
+          senderId: p.id,
+          senderName: p.name,
+          senderAvatarUrl: p.avatarUrl,
+          content: `Checking in for Match 3 — ${p.teamName ?? "Team"}.`,
+          type: "text" as const,
+          timestamp: `20:${31 + i}`,
+        })),
+    ],
+  },
+  {
+    id: "match-4",
+    name: "Match 1",
+    subtitle: "Qualifier · Match Day 2",
+    iconType: "swords",
+    stageIndex: 0,
+    stageName: "Qualifier",
+    matchDayId: "qualifier-day-2",
+    matchDayLabel: "Match Day 2",
+    matchId: "match-4",
+    isUserParticipant: true,
+    chatEnabled: true,
+    participants: match4Participants,
+    messages: [
+      { id: "m4_1", content: "System: Match 4 room created.", type: "system", timestamp: "20:30" },
+      ...match4Participants
+        .filter((p) => !p.isCurrentUser)
+        .map((p, i) => ({
+          id: `m4_${i + 2}`,
+          senderId: p.id,
+          senderName: p.name,
+          senderAvatarUrl: p.avatarUrl,
+          content: `Ready for Match 4. GLHF!`,
+          type: "text" as const,
+          timestamp: `20:${31 + i}`,
+        })),
     ],
   },
   {
     id: "quarter-final",
-    name: "Quarter Final",
-    subtitle: "Quarter Final - Top Competitors Lobby",
+    name: "Match 1",
+    subtitle: "Quarter Final · Main Bracket",
     iconType: "trophy",
+    stageIndex: 2,
+    stageName: "Quarter Final",
+    matchDayId: "qf-main",
+    matchDayLabel: "Main Bracket",
+    matchId: "quarter-final",
+    isUserParticipant: true,
+    chatEnabled: true,
     participants: quarterFinalParticipants,
     messages: [
       { id: "q1", content: "System: Quarter Final lobby formed.", type: "system", timestamp: "21:00" },

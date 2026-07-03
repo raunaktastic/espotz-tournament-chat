@@ -32,7 +32,7 @@ export default function TournamentHeader() {
       {/* Main Title & Subtitle */}
       <div className="mb-6">
         <h1 className="text-4xl font-extrabold tracking-tight text-white md:text-5xl lg:text-6xl mb-2">
-          girlie
+          DemonlLord
         </h1>
         <p className="text-sm font-medium text-gray-400">
           fffffffffffffffffffff
