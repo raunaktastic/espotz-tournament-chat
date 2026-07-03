@@ -1,8 +1,9 @@
-import { useNavigate } from "react-router-dom"
+import { useState } from "react"
 import { Trophy, Coins, Clock, Users } from "lucide-react"
+import ChatDrawer from "./ChatDrawer"
 
 export default function TournamentHeader() {
-  const navigate = useNavigate()
+  const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false)
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 text-left">
@@ -119,7 +120,7 @@ export default function TournamentHeader() {
       {/* Tournament Chat Section (IMPORTANT USER REQUIREMENT) */}
       <div className="mb-8">
         <button
-          onClick={() => navigate("/chat")}
+          onClick={() => setIsChatDrawerOpen(true)}
           className="group relative flex w-full flex-col justify-center rounded-xl border border-purple-500/40 bg-gradient-to-r from-[#20133a] via-[#150d28] to-[#120822] p-5 text-left transition-all hover:scale-[1.01] hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/10 cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -136,6 +137,9 @@ export default function TournamentHeader() {
           </p>
         </button>
       </div>
+
+      {/* Chat Drawer */}
+      <ChatDrawer isOpen={isChatDrawerOpen} onClose={() => setIsChatDrawerOpen(false)} />
     </div>
   )
 }

@@ -9,27 +9,32 @@ export default function ChatBreadcrumb({ segments }: ChatBreadcrumbProps) {
 
   return (
     <nav
-      aria-label="Chat location"
+      aria-label="Chat location breadcrumb"
       className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-gray-500"
     >
-      {segments.map((segment, index) => {
-        const isLast = index === segments.length - 1
+      <ol className="flex items-center gap-1">
+        {segments.map((segment, index) => {
+          const isLast = index === segments.length - 1
 
-        return (
-          <span key={`${segment.label}-${index}`} className="flex items-center gap-1">
-            {index > 0 && <span className="text-gray-600">›</span>}
-            <span
-              className={
-                isLast
-                  ? "font-semibold text-indigo-300"
-                  : "text-gray-500"
-              }
-            >
-              {segment.label}
-            </span>
-          </span>
-        )
-      })}
+          return (
+            <li key={`${segment.label}-${index}`} className="flex items-center gap-1">
+              {index > 0 && (
+                <span className="text-gray-600" aria-hidden="true">›</span>
+              )}
+              <span
+                className={
+                  isLast
+                    ? "font-semibold text-indigo-300"
+                    : "text-gray-500"
+                }
+                aria-current={isLast ? "page" : undefined}
+              >
+                {segment.label}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
     </nav>
   )
 }
