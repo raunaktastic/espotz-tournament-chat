@@ -1,6 +1,21 @@
-import { useState, useMemo } from "react"
-import { ChevronDown, ChevronRight, Megaphone, Swords, Search, X } from "lucide-react"
-import type { TournamentChatTree, MatchChatNode } from "../types/chat"
+﻿import { useEffect, useState } from "react"
+import {
+  ChevronDown,
+  ChevronRight,
+  Megaphone,
+  MessageSquare,
+  Swords,
+  Trophy,
+} from "lucide-react"
+import type { TournamentChatTree, MatchChatNode, StageChatNode } from "../types/chat"
+
+export interface RecentChatItem {
+  chatId: string
+  label: string
+  isLobby?: boolean
+}
+
+type NavTab = "recent" | "tournament"
 
 interface ChatNavigatorSidebarProps {
   tree: TournamentChatTree
@@ -11,6 +26,24 @@ interface ChatNavigatorSidebarProps {
   onClose?: () => void
   className?: string
   hideHeader?: boolean
+  recentChats?: RecentChatItem[]
+}
+
+/** Shared row styles ΓÇö same size/weight for Recent and Tournament */
+const rowBase =
+  "flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-bold text-white transition-colors cursor-pointer"
+const rowActive =
+  "bg-gradient-to-r from-purple-600/40 to-indigo-600/30 shadow-md shadow-purple-500/20"
+const rowIdle = "hover:bg-purple-500/10"
+const iconBox =
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-500/20"
+const iconBoxActive = "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-500/30"
+const iconClass = "h-4 w-4 text-white"
+const badgeClass =
+  "shrink-0 rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-200"
+
+function stageMatchCount(stage: StageChatNode): number {
+  return stage.matchDays.reduce((sum, day) => sum + day.matches.length, 0)
 }
 
 function MatchRow({
@@ -22,31 +55,36 @@ function MatchRow({
   isActive: boolean
   onSelect: () => void
 }) {
+  const isLive = match.status === "live"
+
   return (
     <button
       type="button"
       onClick={onSelect}
-      aria-label={`Select ${match.label}`}
-      aria-selected={isActive}
-      role="menuitem"
-      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-all duration-200 cursor-pointer ${
-        isActive
-          ? "bg-indigo-600/20 text-indigo-200 border-l-2 border-indigo-500"
-          : "text-gray-400 hover:bg-[#12162b]/50 hover:text-gray-200 border-l-2 border-transparent"
-      }`}
+      className={`${rowBase} ${isActive ? rowActive : rowIdle}`}
     >
-      <Swords className="h-4 w-4 shrink-0 text-indigo-400" aria-hidden="true" />
-      <span className="flex-1 truncate font-medium">{match.label}</span>
-      {match.status === "live" && (
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" title="Live" aria-label="Live match" />
+      <span className={isActive ? iconBoxActive : iconBox}>
+        <Swords className={iconClass} />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{match.label}</span>
+      {isLive && (
+        <span className="shrink-0 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-400">
+          Live
+        </span>
       )}
       {match.unreadCount != null && match.unreadCount > 0 && (
-        <span className="rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-semibold text-white" aria-label={`${match.unreadCount} unread messages`}>
+        <span className="shrink-0 rounded-full bg-purple-600 px-2 py-0.5 text-[10px] font-bold text-white">
           {match.unreadCount}
         </span>
       )}
     </button>
   )
+}
+
+function tabClass(active: boolean) {
+  return active
+    ? "flex-1 rounded-lg border border-purple-400/50 bg-purple-600/20 px-2 py-1.5 text-sm font-bold text-white transition-colors cursor-pointer"
+    : "flex-1 rounded-lg border border-transparent px-2 py-1.5 text-sm font-bold text-gray-400 transition-colors hover:bg-purple-500/10 hover:text-white cursor-pointer"
 }
 
 export default function ChatNavigatorSidebar({
@@ -58,170 +96,192 @@ export default function ChatNavigatorSidebar({
   onClose,
   className = "",
   hideHeader = false,
+  recentChats = [],
 }: ChatNavigatorSidebarProps) {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [navTab, setNavTab] = useState<NavTab>(() =>
+    recentChats.length > 0 ? "recent" : "tournament"
+  )
+
   const isTournamentExpanded = expandedNodes.has(tree.tournamentId)
+  const isLobbyActive = activeChatId === tree.lobbyChatId
+
+  useEffect(() => {
+    if (recentChats.some((c) => c.chatId === activeChatId)) {
+      setNavTab("recent")
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid fighting manual Tournament tab
+  }, [activeChatId, recentChats.length])
 
   const handleSelectChat = (chatId: string) => {
     onSelectChat(chatId)
     onClose?.()
   }
 
-  const filteredTree = useMemo(() => {
-    if (!searchQuery.trim()) return tree
-
-    const query = searchQuery.toLowerCase()
-
-    const filterMatchDays = (matchDays: Array<{ id: string; label: string; matches: MatchChatNode[] }>) => {
-      return matchDays
-        .map((day) => ({
-          ...day,
-          matches: day.matches.filter((match) =>
-            match.label.toLowerCase().includes(query)
-          ),
-        }))
-        .filter((day) => day.matches.length > 0)
-    }
-
-    const filteredStages = tree.stages
-      .map((stage) => ({
-        ...stage,
-        matchDays: filterMatchDays(stage.matchDays),
-      }))
-      .filter((stage) => stage.matchDays.length > 0)
-
-    return {
-      ...tree,
-      stages: filteredStages,
-    }
-  }, [searchQuery, tree])
-
   return (
-    <div className={`flex flex-col bg-[#0c0f1d]/90 backdrop-blur-sm text-left ${className}`}>
+    <div className={`flex flex-col bg-[#0c0f1d] text-left ${className}`}>
       {!hideHeader && (
-        <div className="border-b border-[#1f2538]/50 px-4 py-3 shrink-0">
-          <span className="text-sm font-semibold tracking-wide text-white">Chat Navigator</span>
+        <div className="shrink-0 border-b border-purple-500/20 px-4 pt-3 pb-2">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40">
+              <MessageSquare className="h-4 w-4" />
+            </span>
+            <span className="text-lg font-extrabold tracking-tight text-white">Chats</span>
+          </div>
+          <div className="mt-2.5 h-0.5 w-full rounded-full bg-gradient-to-r from-purple-500 to-transparent" />
         </div>
       )}
 
-      {/* Search Bar */}
-      <div className="px-3 py-2.5 shrink-0 border-b border-[#1f2538]/50">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" aria-hidden="true" />
-          <input
-            type="text"
-            placeholder="Search matches..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search matches"
-            className="w-full bg-[#0a0d18] border border-[#1f2942]/50 rounded-lg py-2 pl-9 pr-9 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-200"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              aria-label="Clear search"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
+      <div className="shrink-0 border-b border-purple-500/20 px-3 py-2">
+        <div className="flex gap-1.5 rounded-xl border border-purple-500/20 bg-gray-900/50 p-1">
+          <button
+            type="button"
+            onClick={() => setNavTab("recent")}
+            className={tabClass(navTab === "recent")}
+          >
+            Recent
+          </button>
+          <button
+            type="button"
+            onClick={() => setNavTab("tournament")}
+            className={tabClass(navTab === "tournament")}
+          >
+            Tournament
+          </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
-        {/* Tournament root */}
-        <div>
-          <button
-            type="button"
-            onClick={() => onToggleNode(tree.tournamentId)}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-white hover:bg-[#12162b]/50 transition-colors duration-200 cursor-pointer"
-          >
-            {isTournamentExpanded ? (
-              <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200" />
+      <div className="flex-1 overflow-y-auto p-3">
+        {navTab === "recent" && (
+          <div className="overflow-hidden rounded-xl border border-purple-500/20 bg-gray-900/50">
+            {recentChats.length === 0 ? (
+              <p className="px-3 py-6 text-center text-sm font-bold text-gray-500">
+                No recent chats yet. Send a message to add one.
+              </p>
             ) : (
-              <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200" />
+              <div className="divide-y divide-white/5 p-1.5">
+                {recentChats.map((item) => {
+                  const isActive = activeChatId === item.chatId
+                  return (
+                    <button
+                      key={item.chatId}
+                      type="button"
+                      onClick={() => handleSelectChat(item.chatId)}
+                      className={`${rowBase} ${isActive ? rowActive : rowIdle}`}
+                    >
+                      <span className={isActive ? iconBoxActive : iconBox}>
+                        {item.isLobby ? (
+                          <Megaphone className={iconClass} />
+                        ) : (
+                          <Swords className={iconClass} />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
             )}
-            <span className="truncate">{tree.tournamentName}</span>
-          </button>
+          </div>
+        )}
 
-          {isTournamentExpanded && (
-            <div className="ml-2 mt-1 space-y-0.5 border-l border-[#1f2942]/30 pl-2">
-              {/* Tournament Lobby */}
+        {navTab === "tournament" && (
+          <div className="overflow-hidden rounded-xl border border-purple-500/20 bg-gray-900/50">
+            <div className="divide-y divide-white/5 p-1.5">
               <button
                 type="button"
-                onClick={() => handleSelectChat(tree.lobbyChatId)}
-                className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-all duration-200 cursor-pointer ${
-                  activeChatId === tree.lobbyChatId
-                    ? "bg-indigo-600/20 text-indigo-200 border-l-2 border-indigo-500"
-                    : "text-gray-400 hover:bg-[#12162b]/50 hover:text-gray-200 border-l-2 border-transparent"
-                }`}
+                onClick={() => onToggleNode(tree.tournamentId)}
+                className={`${rowBase} ${rowIdle}`}
               >
-                <Megaphone className="h-4 w-4 shrink-0 text-purple-400" />
-                <span className="font-medium">Tournament Lobby</span>
+                <span className={iconBox}>
+                  <Trophy className={iconClass} />
+                </span>
+                <span className="min-w-0 flex-1 truncate">{tree.tournamentName}</span>
+                {isTournamentExpanded ? (
+                  <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+                )}
               </button>
 
-              {/* Stages */}
-              {filteredTree.stages.map((stage) => {
-                const isStageExpanded = expandedNodes.has(stage.id)
+              {isTournamentExpanded && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectChat(tree.lobbyChatId)}
+                    className={`${rowBase} ${isLobbyActive ? rowActive : rowIdle}`}
+                  >
+                    <span className={isLobbyActive ? iconBoxActive : iconBox}>
+                      <Megaphone className={iconClass} />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">Tournament Lobby</span>
+                  </button>
 
-                return (
-                  <div key={stage.id}>
-                    <button
-                      type="button"
-                      onClick={() => onToggleNode(stage.id)}
-                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-[#12162b]/50 transition-colors duration-200 cursor-pointer"
-                    >
-                      {isStageExpanded ? (
-                        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-500 transition-transform duration-200" />
-                      ) : (
-                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-500 transition-transform duration-200" />
-                      )}
-                      <span className="truncate">{stage.name}</span>
-                    </button>
+                  {tree.stages.map((stage) => {
+                    const isStageExpanded = expandedNodes.has(stage.id)
+                    const matchCount = stageMatchCount(stage)
 
-                    {isStageExpanded && (
-                      <div className="ml-2 mt-1 space-y-0.5 border-l border-[#1f2942]/20 pl-2">
-                        {stage.matchDays.map((day) => {
-                          const isDayExpanded = expandedNodes.has(day.id)
+                    return (
+                      <div key={stage.id}>
+                        <button
+                          type="button"
+                          onClick={() => onToggleNode(stage.id)}
+                          className={`${rowBase} ${rowIdle}`}
+                        >
+                          <span className="min-w-0 flex-1 truncate pl-0">{stage.name}</span>
+                          {matchCount > 0 && (
+                            <span className={badgeClass}>
+                              {matchCount} {matchCount === 1 ? "chat" : "chats"}
+                            </span>
+                          )}
+                          {isStageExpanded ? (
+                            <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+                          )}
+                        </button>
 
-                          return (
-                            <div key={day.id}>
-                              <button
-                                type="button"
-                                onClick={() => onToggleNode(day.id)}
-                                className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold text-gray-500 hover:bg-[#12162b]/40 hover:text-gray-400 transition-colors duration-200 cursor-pointer"
-                              >
-                                {isDayExpanded ? (
-                                  <ChevronDown className="h-3 w-3 shrink-0 transition-transform duration-200" />
-                                ) : (
-                                  <ChevronRight className="h-3 w-3 shrink-0 transition-transform duration-200" />
+                        {isStageExpanded &&
+                          stage.matchDays.map((day) => {
+                            const isDayExpanded = expandedNodes.has(day.id)
+
+                            return (
+                              <div key={day.id} className="pl-2">
+                                <button
+                                  type="button"
+                                  onClick={() => onToggleNode(day.id)}
+                                  className={`${rowBase} ${rowIdle}`}
+                                >
+                                  {isDayExpanded ? (
+                                    <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+                                  )}
+                                  <span className="min-w-0 flex-1 truncate">{day.label}</span>
+                                </button>
+
+                                {isDayExpanded && (
+                                  <div className="pl-2">
+                                    {day.matches.map((m) => (
+                                      <MatchRow
+                                        key={m.chatId}
+                                        match={m}
+                                        isActive={activeChatId === m.chatId}
+                                        onSelect={() => handleSelectChat(m.chatId)}
+                                      />
+                                    ))}
+                                  </div>
                                 )}
-                                <span className="truncate">{day.label}</span>
-                              </button>
-
-                              {isDayExpanded && (
-                                <div className="ml-2 mt-0.5 space-y-0.5">
-                                  {day.matches.map((m) => (
-                                    <MatchRow
-                                      key={m.chatId}
-                                      match={m}
-                                      isActive={activeChatId === m.chatId}
-                                      onSelect={() => handleSelectChat(m.chatId)}
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
+                              </div>
+                            )
+                          })}
                       </div>
-                    )}
-                  </div>
-                )
-              })}
+                    )
+                  })}
+                </>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

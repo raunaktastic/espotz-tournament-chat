@@ -5,6 +5,14 @@ export interface Participant {
   isOnline: boolean
   isCurrentUser: boolean
   teamName?: string
+  /** Display name shown first on player cards */
+  registeredName?: string
+  /** Espotz handle without @ */
+  username?: string
+  /** In-game ID */
+  gameId?: string
+  /** Team captain / leader — gold styling */
+  isLeader?: boolean
 }
 
 export type MessageType = "text" | "image" | "system"

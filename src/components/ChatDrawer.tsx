@@ -1,8 +1,6 @@
-import { useState, useRef, useEffect } from "react"
-import { X, Megaphone, Swords, MoreVertical, Paperclip, Send, Users } from "lucide-react"
-import { mockChats } from "../data/mockChatData"
-import { currentUser } from "../data/tournamentPlayers"
-import type { ChatChannel, Message } from "../types/chat"
+import { useState, useEffect, useRef } from "react"
+import { X, Megaphone, Swords, MoreVertical, Paperclip, Send, Users, Minimize2 } from "lucide-react"
+import { useChat } from "../context/ChatContext"
 
 interface ChatDrawerProps {
   isOpen: boolean
@@ -10,24 +8,23 @@ interface ChatDrawerProps {
 }
 
 export default function ChatDrawer({ isOpen, onClose }: ChatDrawerProps) {
-  const [channels, setChannels] = useState<ChatChannel[]>(mockChats)
-  const [activeChannelId] = useState<string>("tournament")
-  const [inputText, setInputText] = useState<string>("")
+  const {
+    channels,
+    activeChannelId,
+    inputText,
+    handleSendMessage,
+    messagesEndRef,
+    textareaRef,
+    handleTextareaChange,
+    handleQuickReply,
+  } = useChat()
+
   const [activeMenu, setActiveMenu] = useState<boolean>(false)
   const [isTyping, setIsTyping] = useState<boolean>(false)
-
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [isMinimized, setIsMinimized] = useState<boolean>(false)
   const drawerRef = useRef<HTMLDivElement>(null)
 
   const activeChannel = channels.find((c) => c.id === activeChannelId) || channels[0]
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [activeChannelId, activeChannel.messages])
 
   // Close on ESC
   useEffect(() => {
@@ -47,48 +44,17 @@ export default function ChatDrawer({ isOpen, onClose }: ChatDrawerProps) {
     }
   }
 
-  const handleSendMessage = () => {
-    if (!inputText.trim()) return
+  // Update typing indicator
+  useEffect(() => {
+    setIsTyping(inputText.length > 0)
+  }, [inputText])
 
-    const newMessage: Message = {
-      id: `user_${Date.now()}`,
-      senderId: "me",
-      senderName: currentUser.name,
-      senderAvatarUrl: currentUser.avatarUrl,
-      content: inputText,
-      type: "text",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  // Reset minimized state when drawer is opened
+  useEffect(() => {
+    if (isOpen) {
+      setIsMinimized(false)
     }
-
-    setChannels((prevChannels) =>
-      prevChannels.map((c) => {
-        if (c.id === activeChannelId) {
-          return {
-            ...c,
-            messages: [...c.messages, newMessage],
-          }
-        }
-        return c
-      })
-    )
-    setInputText("")
-  }
-
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputText(e.target.value)
-    setIsTyping(e.target.value.length > 0)
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`
-    }
-  }
-
-  const handleQuickReply = (pill: string) => {
-    setInputText((prev) => (prev ? prev + " " + pill : pill))
-    textareaRef.current?.focus()
-  }
+  }, [isOpen])
 
   const renderChannelIcon = (iconType: string, className: string = "h-5 w-5") => {
     switch (iconType) {
@@ -105,6 +71,10 @@ export default function ChatDrawer({ isOpen, onClose }: ChatDrawerProps) {
 
   if (!isOpen) return null
 
+  // When minimized, render nothing but keep component mounted to preserve state
+  if (isMinimized) return null
+
+  // Render full drawer when not minimized
   return (
     <div
       className="fixed inset-0 z-50 flex md:items-center md:justify-end items-end justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300"
@@ -128,6 +98,13 @@ export default function ChatDrawer({ isOpen, onClose }: ChatDrawerProps) {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[#141829] text-gray-400 hover:text-white transition-all duration-200"
+              title="Collapse chat"
+            >
+              <Minimize2 className="h-4 w-4" />
+            </button>
             <div className="relative">
               <button
                 onClick={() => setActiveMenu(!activeMenu)}

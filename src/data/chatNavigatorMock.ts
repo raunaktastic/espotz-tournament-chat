@@ -200,3 +200,24 @@ export function getAutoExpandNodeIds(
 
   return ids
 }
+
+/** Clear unread badge for a chat when the user opens it. */
+export function clearUnreadForChat(
+  tree: TournamentChatTree,
+  chatId: string
+): TournamentChatTree {
+  return {
+    ...tree,
+    stages: tree.stages.map((stage) => ({
+      ...stage,
+      matchDays: stage.matchDays.map((day) => ({
+        ...day,
+        matches: day.matches.map((m) =>
+          m.chatId === chatId && m.unreadCount
+            ? { ...m, unreadCount: 0 }
+            : m
+        ),
+      })),
+    })),
+  }
+}
