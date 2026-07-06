@@ -40,12 +40,12 @@ function TournamentPage() {
     <div className="min-h-screen bg-[#080a12] text-white pt-16 pb-16 md:pb-0">
       <Header />
 
-      <main className="mx-auto max-w-7xl pb-16">
+      <main className={`mx-auto max-w-7xl pb-16 transition-all ${isDesktop && chatOpen ? 'pr-[420px]' : ''}`}>
         <TournamentHeader onOpenChatDrawer={() => navigate("/chat")} />
         <TournamentTabs />
       </main>
 
-      {/* Popup only on desktop (after minimize from full chat, or FAB) */}
+      {/* Docked panel on desktop (after minimize from full chat, or FAB) */}
       {isDesktop && (
         <FloatingChatWidget
           open={chatOpen}

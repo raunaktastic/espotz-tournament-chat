@@ -150,12 +150,7 @@ export default function FloatingChatWidget({
 
       {/* Messenger-style drawer */}
       {isOpen && (
-        <>
-          <div 
-            className="fixed top-16 right-0 bottom-0 left-0 z-50 bg-black/50 animate-fade-in"
-            onClick={handleClose}
-          />
-          <div className={`fixed top-16 right-0 bottom-0 z-50 flex h-[calc(100vh-4rem)] w-full max-w-[400px] flex-col border-l border-purple-500/30 bg-[#0c0f1d] shadow-2xl shadow-black/60 md:max-w-[400px] sm:max-w-[350px] ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
+        <div className={`hidden md:flex fixed top-16 right-0 bottom-0 w-[420px] shrink-0 flex-col border-l border-purple-500/30 bg-[#0c0f1d] shadow-2xl shadow-black/60 ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
               <div className="flex shrink-0 items-center gap-2 border-b border-purple-500/20 px-2 py-2">
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
@@ -352,7 +347,6 @@ export default function FloatingChatWidget({
                 </div>
               )}
         </div>
-        </>
       )}
     </>
   )
