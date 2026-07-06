@@ -1,34 +1,26 @@
 ﻿import { useState, useRef, useEffect, useMemo, useCallback } from "react"
-import { useNavigate } from "react-router-dom"
 import {
   MessageSquare,
   X,
-  ArrowLeft,
   Send,
-  ExternalLink,
   Megaphone,
   Swords,
+  Users,
 } from "lucide-react"
 import { mockChats } from "../data/mockChatData"
 import { currentUser } from "../data/tournamentPlayers"
 import {
   mockTournamentChatTree,
-  getVisibleNavigatorTree,
   findChatPath,
-  getAutoExpandNodeIds,
-  clearUnreadForChat,
 } from "../data/chatNavigatorMock"
-import ChatNavigatorSidebar from "./ChatNavigatorSidebar"
-import { getChatHeaderTitle, getChatHeaderParts } from "../lib/chatHeader"
+import { getChatHeaderParts } from "../lib/chatHeader"
 import {
   loadRecentChatIds,
   persistRecentChatIds,
   touchRecent,
   MESSAGE_WINDOW_SIZE,
 } from "../lib/recentChats"
-import type { ChatChannel, Message, TournamentChatTree } from "../types/chat"
-
-type PanelView = "list" | "conversation"
+import type { ChatChannel, Message } from "../types/chat"
 
 interface FloatingChatWidgetProps {
   open?: boolean
@@ -37,21 +29,14 @@ interface FloatingChatWidgetProps {
   initialChannelId?: string
 }
 
-function initialNavigatorTree(): TournamentChatTree {
-  return clearUnreadForChat(
-    getVisibleNavigatorTree(mockTournamentChatTree),
-    "tournament"
-  )
-}
-
 export default function FloatingChatWidget({
   open: controlledOpen,
   onOpenChange,
   initialChannelId,
 }: FloatingChatWidgetProps) {
-  const navigate = useNavigate()
   const isControlled = controlledOpen !== undefined
   const [internalOpen, setInternalOpen] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
   const isOpen = isControlled ? controlledOpen : internalOpen
 
   const setOpen = (next: boolean) => {
@@ -59,7 +44,14 @@ export default function FloatingChatWidget({
     else setInternalOpen(next)
   }
 
-  const [view, setView] = useState<PanelView>("list")
+  const handleClose = () => {
+    setIsClosing(true)
+    setTimeout(() => {
+      setOpen(false)
+      setIsClosing(false)
+    }, 300)
+  }
+
   const [channels, setChannels] = useState<ChatChannel[]>(mockChats)
   const [activeChannelId, setActiveChannelId] = useState("tournament")
 
@@ -68,18 +60,12 @@ export default function FloatingChatWidget({
     if (!isOpen) return
     if (initialChannelId) {
       setActiveChannelId(initialChannelId)
-      setView("conversation")
-    } else {
-      setView("list")
     }
   }, [isOpen, initialChannelId])
-  const [navigatorTree, setNavigatorTree] = useState(initialNavigatorTree)
   const [inputText, setInputText] = useState("")
-  const [expandedNodes, setExpandedNodes] = useState(
-    () => new Set(getAutoExpandNodeIds(mockTournamentChatTree, "tournament"))
-  )
   const [recentIds, setRecentIds] = useState(() => loadRecentChatIds(mockChats))
   const [visibleCount, setVisibleCount] = useState(MESSAGE_WINDOW_SIZE)
+  const [isSidebarDrawerOpen, setIsSidebarDrawerOpen] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -97,27 +83,12 @@ export default function FloatingChatWidget({
     [activeChannel.isLobby, activeChannel.name, breadcrumbSegments]
   )
 
-  const recentChats = useMemo(
-    () =>
-      recentIds
-        .map((chatId) => {
-          const channel = channels.find((c) => c.id === chatId)
-          if (!channel) return null
-          const segments = findChatPath(mockTournamentChatTree, chatId)
-          return {
-            chatId,
-            label: getChatHeaderTitle(channel.isLobby, channel.name, segments),
-            isLobby: channel.isLobby,
-          }
-        })
-        .filter((item): item is NonNullable<typeof item> => item != null),
-    [recentIds, channels]
-  )
-
   const visibleMessages = useMemo(
     () => activeChannel.messages.slice(-visibleCount),
     [activeChannel.messages, visibleCount]
   )
+
+  const onlineCount = activeChannel.participants.filter((p) => p.isOnline).length
 
   const scrollToBottom = useCallback(() => {
     const container = messagesContainerRef.current
@@ -132,28 +103,9 @@ export default function FloatingChatWidget({
   }, [recentIds])
 
   useEffect(() => {
-    if (view !== "conversation") return
     setVisibleCount(MESSAGE_WINDOW_SIZE)
-    setExpandedNodes(
-      new Set(getAutoExpandNodeIds(mockTournamentChatTree, activeChannelId))
-    )
-    setNavigatorTree((prev) => clearUnreadForChat(prev, activeChannelId))
     scrollToBottom()
-  }, [activeChannelId, view, scrollToBottom])
-
-  const handleToggleNode = useCallback((nodeId: string) => {
-    setExpandedNodes((prev) => {
-      const next = new Set(prev)
-      if (next.has(nodeId)) next.delete(nodeId)
-      else next.add(nodeId)
-      return next
-    })
-  }, [])
-
-  const handleSelectChat = useCallback((chatId: string) => {
-    setActiveChannelId(chatId)
-    setView("conversation")
-  }, [])
+  }, [activeChannelId, scrollToBottom])
 
   const handleSendMessage = () => {
     if (!inputText.trim()) return
@@ -178,14 +130,8 @@ export default function FloatingChatWidget({
     requestAnimationFrame(() => scrollToBottom())
   }
 
-  const handleClose = () => {
-    setOpen(false)
-    setView("list")
-  }
-
   const handleOpen = () => {
     setOpen(true)
-    setView("list")
   }
 
   return (
@@ -202,65 +148,15 @@ export default function FloatingChatWidget({
         </button>
       )}
 
-      {/* Messenger-style popup */}
+      {/* Messenger-style drawer */}
       {isOpen && (
-        <div className="fixed bottom-20 right-4 z-50 flex h-[min(560px,calc(100vh-7rem))] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-purple-500/30 bg-[#0c0f1d] shadow-2xl shadow-black/60 md:bottom-6 md:right-6">
-          {view === "list" ? (
-            <>
-              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-purple-500/20 px-3 py-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40">
-                    <MessageSquare className="h-4 w-4" />
-                  </span>
-                  <span className="text-base font-extrabold tracking-tight text-white">
-                    Chats
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleClose()
-                      navigate("/chat")
-                    }}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-purple-500/10 hover:text-white cursor-pointer"
-                    aria-label="Open full chat page"
-                    title="Open full page"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-purple-500/10 hover:text-white cursor-pointer"
-                    aria-label="Close chats"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              <ChatNavigatorSidebar
-                tree={navigatorTree}
-                activeChatId={activeChannelId}
-                expandedNodes={expandedNodes}
-                onToggleNode={handleToggleNode}
-                onSelectChat={handleSelectChat}
-                hideHeader
-                recentChats={recentChats}
-                className="min-h-0 flex-1 overflow-hidden"
-              />
-            </>
-          ) : (
-            <>
+        <>
+          <div 
+            className="fixed top-16 right-0 bottom-0 left-0 z-50 bg-black/50 backdrop-blur-sm animate-fade-in"
+            onClick={handleClose}
+          />
+          <div className={`fixed top-16 right-0 bottom-0 z-50 flex h-[calc(100vh-4rem)] w-full max-w-[400px] flex-col border-l border-purple-500/30 bg-[#0c0f1d] shadow-2xl shadow-black/60 md:max-w-[400px] sm:max-w-[350px] ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
               <div className="flex shrink-0 items-center gap-2 border-b border-purple-500/20 px-2 py-2">
-                <button
-                  type="button"
-                  onClick={() => setView("list")}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-purple-500/10 hover:text-white cursor-pointer"
-                  aria-label="Back to chats"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                     chatTitleParts.isLobby
@@ -284,6 +180,15 @@ export default function FloatingChatWidget({
                     </p>
                   )}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarDrawerOpen(true)}
+                  className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors cursor-pointer text-gray-400 hover:bg-[#141829] hover:text-white"
+                  aria-label="Show players list"
+                >
+                  <Users className="h-4 w-4" />
+                  <span className="text-emerald-400">{onlineCount}</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleClose}
@@ -382,9 +287,72 @@ export default function FloatingChatWidget({
                   </button>
                 </div>
               </div>
-            </>
-          )}
+
+              {/* Online Players sidebar drawer */}
+              {isSidebarDrawerOpen && (
+                <div 
+                  className="absolute inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade-in"
+                  onClick={() => setIsSidebarDrawerOpen(false)}
+                >
+                  <div 
+                    className="flex h-full w-full max-w-sm flex-col border-l border-purple-500/20 bg-[#0c0f1d] animate-slide-in-right"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex shrink-0 flex-col border-b border-purple-500/20 px-4 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-600/20 text-purple-300">
+                            <Users className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-white">Online Players</p>
+                            <p className="text-[11px] text-gray-500">
+                              <span className="text-emerald-400">{onlineCount}</span> online
+                              <span className="text-gray-600"> · </span>
+                              {activeChannel.participants.length} total
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsSidebarDrawerOpen(false)}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-purple-500/10 hover:text-white cursor-pointer"
+                          aria-label="Close"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-3 py-3">
+                      {activeChannel.participants.map((player) => (
+                        <div
+                          key={player.id}
+                          className="flex items-center gap-3 rounded-lg border border-white/5 bg-[#12162b]/50 px-3 py-2 mb-2"
+                        >
+                          <div className="relative shrink-0">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-600 text-sm font-bold text-white">
+                              {player.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span
+                              className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#0c0f1d] ${
+                                player.isOnline ? "bg-emerald-500" : "bg-red-500"
+                              }`}
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-white">{player.name}</p>
+                            {player.isCurrentUser && (
+                              <span className="text-[10px] font-semibold uppercase text-purple-300">You</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
         </div>
+        </>
       )}
     </>
   )

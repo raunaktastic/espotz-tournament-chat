@@ -4,59 +4,40 @@ import {
   ArrowLeft,
   MoreVertical,
   Send,
-  PanelRight,
   X,
   SmilePlus,
   Users,
   Swords,
   Megaphone,
-  MessageSquare,
   Minimize2,
 } from "lucide-react"
 import { mockChats } from "../data/mockChatData"
 import { currentUser } from "../data/tournamentPlayers"
 import {
   mockTournamentChatTree,
-  getVisibleNavigatorTree,
   findChatPath,
-  getAutoExpandNodeIds,
-  clearUnreadForChat,
 } from "../data/chatNavigatorMock"
-import ChatNavigatorSidebar from "../components/ChatNavigatorSidebar"
 import Header from "../components/Header"
-import { getChatHeaderTitle, getChatHeaderParts } from "../lib/chatHeader"
+import { getChatHeaderParts } from "../lib/chatHeader"
 import {
   loadRecentChatIds,
   persistRecentChatIds,
   touchRecent,
   MESSAGE_WINDOW_SIZE,
 } from "../lib/recentChats"
-import type { ChatChannel, Message, TournamentChatTree } from "../types/chat"
+import type { ChatChannel, Message } from "../types/chat"
 
 const INITIAL_CHANNEL_ID = "tournament"
 const QUICK_REPLIES = ["GG", "WP", "GLHF"]
 
-function initialNavigatorTree(): TournamentChatTree {
-  return clearUnreadForChat(
-    getVisibleNavigatorTree(mockTournamentChatTree),
-    INITIAL_CHANNEL_ID
-  )
-}
-
 export default function ChatPage() {
   const navigate = useNavigate()
   const [channels, setChannels] = useState<ChatChannel[]>(mockChats)
-  const [activeChannelId, setActiveChannelId] = useState<string>(INITIAL_CHANNEL_ID)
-  const [navigatorTree, setNavigatorTree] = useState<TournamentChatTree>(initialNavigatorTree)
+  const activeChannelId = INITIAL_CHANNEL_ID
   const [inputText, setInputText] = useState<string>("")
-  const [isNavigatorOpen, setIsNavigatorOpen] = useState<boolean>(false)
-  const [sidebarView, setSidebarView] = useState<"navigator" | "players">("navigator")
   const [isSidebarDrawerOpen, setIsSidebarDrawerOpen] = useState<boolean>(false)
   const [showQuickReplies, setShowQuickReplies] = useState<boolean>(false)
   const [activeMenu, setActiveMenu] = useState<boolean>(false)
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(
-    () => new Set(getAutoExpandNodeIds(mockTournamentChatTree, INITIAL_CHANNEL_ID))
-  )
   const [recentIds, setRecentIds] = useState<string[]>(() => loadRecentChatIds(mockChats))
   const [visibleCount, setVisibleCount] = useState(MESSAGE_WINDOW_SIZE)
 
@@ -74,23 +55,6 @@ export default function ChatPage() {
     () =>
       getChatHeaderParts(activeChannel.isLobby, activeChannel.name, breadcrumbSegments),
     [activeChannel.isLobby, activeChannel.name, breadcrumbSegments]
-  )
-
-  const recentChats = useMemo(
-    () =>
-      recentIds
-        .map((chatId) => {
-          const channel = channels.find((c) => c.id === chatId)
-          if (!channel) return null
-          const segments = findChatPath(mockTournamentChatTree, chatId)
-          return {
-            chatId,
-            label: getChatHeaderTitle(channel.isLobby, channel.name, segments),
-            isLobby: channel.isLobby,
-          }
-        })
-        .filter((item): item is NonNullable<typeof item> => item != null),
-    [recentIds, channels]
   )
 
   const visibleMessages = useMemo(
@@ -120,30 +84,8 @@ export default function ChatPage() {
   }, [activeChannelId, scrollToBottom])
 
   useEffect(() => {
-    // Only expand tournament + path to active chat (not every stage)
-    setExpandedNodes(
-      new Set(getAutoExpandNodeIds(mockTournamentChatTree, activeChannelId))
-    )
-    setNavigatorTree((prev) => clearUnreadForChat(prev, activeChannelId))
-    setSidebarView("navigator")
-  }, [activeChannelId, activeChannel.isLobby, activeChannel.participants.length])
-
-  useEffect(() => {
     persistRecentChatIds(recentIds)
   }, [recentIds])
-
-  const handleToggleNode = useCallback((nodeId: string) => {
-    setExpandedNodes((prev) => {
-      const next = new Set(prev)
-      if (next.has(nodeId)) next.delete(nodeId)
-      else next.add(nodeId)
-      return next
-    })
-  }, [])
-
-  const handleSelectChat = useCallback((chatId: string) => {
-    setActiveChannelId(chatId)
-  }, [])
 
   const handleSendMessage = () => {
     if (!inputText.trim()) return
@@ -256,28 +198,13 @@ export default function ChatPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setSidebarView("players")
                       setIsSidebarDrawerOpen(true)
                     }}
-                    className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors cursor-pointer ${
-                      sidebarView === "players"
-                        ? "bg-purple-600/20 text-purple-300"
-                        : "text-gray-400 hover:bg-[#141829] hover:text-white"
-                    }`}
+                    className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors cursor-pointer text-gray-400 hover:bg-[#141829] hover:text-white"
                     aria-label="Show players list"
-                    aria-expanded={sidebarView === "players"}
                   >
                     <Users className="h-4 w-4" />
                     <span className="text-emerald-400">{onlineCount}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsNavigatorOpen(true)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#141829] hover:text-white lg:hidden cursor-pointer"
-                    aria-label="Open chat navigator"
-                  >
-                    <PanelRight className="h-4 w-4" />
                   </button>
 
                   <div className="relative">
@@ -465,121 +392,13 @@ export default function ChatPage() {
                     </button>
                   </div>
                 </div>
-
-                {/* Mobile navigator drawer */}
-                {isNavigatorOpen && (
-                  <div className="lg:hidden absolute inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm">
-                    <div className="flex h-full w-72 flex-col border-l border-purple-500/20 bg-[#0c0f1d]">
-                      <div className="shrink-0 border-b border-purple-500/20 px-4 py-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex min-w-0 items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40">
-                              <MessageSquare className="h-4 w-4" />
-                            </span>
-                            <span className="text-lg font-extrabold tracking-tight text-white">
-                              Chats
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setIsNavigatorOpen(false)}
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-purple-500/10 hover:text-white cursor-pointer"
-                            aria-label="Close chats"
-                          >
-                            <X className="h-5 w-5" />
-                          </button>
-                        </div>
-                        <div className="mt-2.5 h-0.5 w-full rounded-full bg-gradient-to-r from-purple-500 to-transparent" />
-                      </div>
-                      <ChatNavigatorSidebar
-                        tree={navigatorTree}
-                        activeChatId={activeChannelId}
-                        expandedNodes={expandedNodes}
-                        onToggleNode={handleToggleNode}
-                        onSelectChat={handleSelectChat}
-                        onClose={() => setIsNavigatorOpen(false)}
-                        hideHeader
-                        recentChats={recentChats}
-                        className="flex-1 overflow-hidden"
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Desktop navigator */}
-            <div className="hidden lg:flex w-72 shrink-0 border-l border-purple-500/20 bg-[#0c0f1d]/40 flex-col">
-              {sidebarView === "players" ? (
-                <>
-                  <div className="flex shrink-0 flex-col border-b border-purple-500/20 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSidebarView("navigator")}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-purple-500/10 hover:text-white cursor-pointer"
-                        aria-label="Back to chats"
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                      </button>
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-600/20 text-purple-300">
-                          <Users className="h-4 w-4" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-white">Online Players</p>
-                          <p className="text-[11px] text-gray-500">
-                            <span className="text-emerald-400">{onlineCount}</span> online
-                            <span className="text-gray-600"> · </span>
-                            {activeChannel.participants.length} total
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-y-auto px-3 py-3">
-                    {activeChannel.participants.map((player) => (
-                      <div
-                        key={player.id}
-                        className="flex items-center gap-3 rounded-lg border border-white/5 bg-[#12162b]/50 px-3 py-2 mb-2"
-                      >
-                        <div className="relative shrink-0">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-600 text-sm font-bold text-white">
-                            {player.name.charAt(0).toUpperCase()}
-                          </div>
-                          <span
-                            className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#0c0f1d] ${
-                              player.isOnline ? "bg-emerald-500" : "bg-red-500"
-                            }`}
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-white">{player.name}</p>
-                          {player.isCurrentUser && (
-                            <span className="text-[10px] font-semibold uppercase text-purple-300">You</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <ChatNavigatorSidebar
-                  tree={navigatorTree}
-                  activeChatId={activeChannelId}
-                  expandedNodes={expandedNodes}
-                  onToggleNode={handleToggleNode}
-                  onSelectChat={handleSelectChat}
-                  recentChats={recentChats}
-                  className="flex-1 overflow-hidden"
-                />
-              )}
-            </div>
-
-            {/* Mobile/tablet sidebar drawer */}
+            {/* Online Players sidebar drawer */}
             {isSidebarDrawerOpen && (
               <div 
-                className="lg:hidden absolute inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade-in"
+                className="absolute inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade-in"
                 onClick={() => setIsSidebarDrawerOpen(false)}
               >
                 <div 

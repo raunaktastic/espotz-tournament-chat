@@ -2,7 +2,7 @@ import { Bell, Wallet, Globe } from "lucide-react"
 
 export default function Header() {
   return (
-    <header className="border-b border-[#1f2538] bg-[#090b14] px-6 py-4">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#1f2538] bg-[#090b14] px-6 py-4">
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         {/* Left: Logo */}
         <div className="flex items-center gap-2">

@@ -207,11 +207,18 @@
 @keyframes slideInFromRight {
   from {
     transform: translateX(100%);
-    opacity: 0;
   }
   to {
     transform: translateX(0);
-    opacity: 1;
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
   }
 }
 
@@ -305,7 +312,11 @@
 }
 
 .animate-slide-in-right {
-  animation: slideInFromRight var(--transition-base) ease-out;
+  animation: slideInFromRight 300ms ease-out;
+}
+
+.animate-slide-out-right {
+  animation: slideOutToRight 300ms ease-out;
 }
 
 .animate-slide-in-left {
