@@ -152,7 +152,7 @@ export default function FloatingChatWidget({
       {isOpen && (
         <>
           <div 
-            className="fixed top-16 right-0 bottom-0 left-0 z-50 bg-black/50 backdrop-blur-sm animate-fade-in"
+            className="fixed top-16 right-0 bottom-0 left-0 z-50 bg-black/50 animate-fade-in"
             onClick={handleClose}
           />
           <div className={`fixed top-16 right-0 bottom-0 z-50 flex h-[calc(100vh-4rem)] w-full max-w-[400px] flex-col border-l border-purple-500/30 bg-[#0c0f1d] shadow-2xl shadow-black/60 md:max-w-[400px] sm:max-w-[350px] ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
@@ -291,7 +291,7 @@ export default function FloatingChatWidget({
               {/* Online Players sidebar drawer */}
               {isSidebarDrawerOpen && (
                 <div 
-                  className="absolute inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade-in"
+                  className="absolute inset-0 z-50 flex justify-end bg-black/60 animate-fade-in"
                   onClick={() => setIsSidebarDrawerOpen(false)}
                 >
                   <div 
