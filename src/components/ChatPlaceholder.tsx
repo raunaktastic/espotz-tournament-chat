@@ -5,7 +5,7 @@ export default function ChatPlaceholder() {
   const navigate = useNavigate()
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#080a12] p-4 text-center">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#080a12] p-4 text-center">
       <div className="rounded-2xl border border-[#1f2942] bg-[#0c0f1d] p-8 max-w-md w-full shadow-2xl">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-purple-500/10 mb-4">
           <MessageSquare className="h-8 w-8 text-purple-400" />

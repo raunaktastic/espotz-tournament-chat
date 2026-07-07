@@ -139,7 +139,7 @@ function TournamentPage() {
 
 
 
-    <div className="min-h-screen bg-[#080a12] text-white pt-16 pb-16 md:pb-0">
+    <div className="min-h-[100dvh] bg-[#080a12] text-white pt-16 pb-16 md:pb-0">
 
 
 

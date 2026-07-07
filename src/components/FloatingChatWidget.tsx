@@ -618,7 +618,7 @@ export default function FloatingChatWidget({
 
 
 
-          <div className={`md:hidden fixed top-16 left-0 right-0 bottom-0 flex flex-col bg-[#0c0f1d] ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
+          <div className={`md:hidden fixed top-16 left-0 right-0 bottom-0 flex flex-col bg-[#0c0f1d] ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
 
 
 
